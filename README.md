@@ -5,10 +5,10 @@
 
 ## Summary
 
-This module includes some tools, an API specification, and a demo application
-that shows the interaction with the monitoring database used in DreamCloud. For
-more information about the API specification in general, please have a look
-into the attached documentation.
+This module includes a minimal API written in C to register with the
+monitoring server, and then send metric data for a given user, application, and
+experiment ID. A full documentation of the RESTful API of the monitoring
+server can be found in the respective Github repository.
 
 
 ## Prerequisites
@@ -62,15 +62,9 @@ $ make install
 
 ## Project Structure
 
-The compiled resources are found within the `dist` folder. Created resources
-include:
-
-- mf_update
-- mf_add_user
-- mf_new_experiment
-
-In addition, there is a test client installed into `test`, and the library
-is installed into `lib`.
+The compiled monitoring API library is found in the folder `lib`. A simple example
+of how to use the library is found in the `test` folder. The corresponding
+binary is called `test_mf_api`.
 
 
 ## Acknowledgment
