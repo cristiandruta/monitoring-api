@@ -49,9 +49,12 @@ clean:
 	rm -rf *.so
 	rm -rf test_mf_api
 	rm -rf lib
+	rm -rf html
+	rm -rf latex
+	rm -rf doc
 
 clean-all: clean
 	rm -rf bin
 
-doc: $(FILES)
+doc:
 	doxygen Doxyfile
