@@ -66,6 +66,8 @@ clean:
 	rm -rf lib
 	rm -rf test
 
+clean-all: clean
+	rm -rf bin
+
 doc: $(FILES)
 	doxygen Doxyfile
-
