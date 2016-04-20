@@ -263,7 +263,7 @@ mf_register_workflow(
     init_curl();
     char* response_message = malloc(sizeof(char) * 1024);
 
-    const char* index = "v1/dreamcloud/mf/workflows";
+    const char* index = "v1/mf/users";
     char* newURL = malloc(sizeof(char) * (strlen(URL) + strlen(index) + strlen(workflow) + 4));
     sprintf(newURL, "%s/%s/%s", URL, index, workflow);
 
@@ -285,6 +285,23 @@ mf_register_workflow(
     free(newURL);
 
     return response_message;
+}
+
+char* mf_create_user(
+  const char* server,
+  const char* username)
+{
+    init_curl();
+
+    const char* resource = "v1/mf/users";
+    char* URL = malloc(sizeof(char) * (strlen(server) + strlen(resource) + strlen(username) + 10));
+    sprintf(URL, "%s/%s/%s/create", server, resource, username);
+
+    debug("mf_create_user(URL): %s", URL);
+    char* json = malloc(sizeof(char) * 128 + strlen(username));
+    sprintf(json, "{ \"user\": \"%s\" }", username);
+
+    return publish_json(URL, json);
 }
 
 char*

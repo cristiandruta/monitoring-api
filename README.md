@@ -65,11 +65,12 @@ $ make install
 The compiled resources are found within the `dist` folder. Created resources
 include:
 
-- mf_client
 - mf_update
-- mf_create_workflow
+- mf_add_user
 - mf_new_experiment
 
+In addition, there is a test client installed into `test`, and the library
+is installed into `lib`.
 
 
 ## Acknowledgment

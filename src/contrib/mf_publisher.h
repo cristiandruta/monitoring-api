@@ -110,6 +110,11 @@ char* mf_register_workflow(
     const char* json_string
 );
 
+char* mf_create_user(
+  const char* server,
+  const char* username
+);
+
 /**
  * @brief Creates a new experiment on the database for the given workflow.
  *

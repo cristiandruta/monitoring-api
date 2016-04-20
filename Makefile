@@ -6,7 +6,7 @@ CC = /usr/bin/gcc
 COPT_SO = $(CFLAGS) -fpic
 
 CFLAGS = -std=gnu99 -pedantic -Wall -fPIC -Wwrite-strings -Wpointer-arith \
--Wcast-align -O0 -ggdb $(CURL_INC)
+-Wcast-align -O0 -ggdb $(CURL_INC) $(API_INC)
 
 LFLAGS =  -lm $(CURL)
 
@@ -20,51 +20,35 @@ endif
 COMMON = .
 EXTERN = $(COMMON)/bin
 
+EXT_SRC = $(COMMON)/ext
+CUTEST = $(EXT_SRC)/CuTest
+CUTEST_INC = -I$(CUTEST)
+
 SRC = $(COMMON)/src
+API_INC = -I$(SRC)/
 CONTRIB_SRC = $(SRC)/contrib
-TOOLS_SRC = $(SRC)/tools
-TEST_SRC = $(SRC)/test
+TEST_SRC = $(COMMON)/test
 
 CURL = -L$(EXTERN)/curl/lib/ -lcurl
 CURL_INC = -I$(EXTERN)/curl/include/
 
-all: clean mf_add_user mf_new_experiment mf_api mf_api_test mf_update
+all: clean mf_api test_mf_api
 
-mf_add_user: $(TOOLS_SRC)/mf_add_user.c $(CONTRIB_SRC)/mf_publisher.c
-	$(CC) $^ -o $@ -I. $(CFLAGS) $(LFLAGS)
-
-mf_new_experiment: $(TOOLS_SRC)/mf_new_experiment.c $(CONTRIB_SRC)/mf_publisher.c
-	$(CC) $^ -o $@ -I. $(CFLAGS) $(LFLAGS)
-
-mf_api: $(SRC)/mf_api.c $(SRC)/mf_util.c $(CONTRIB_SRC)/mf_publisher.c
+mf_api: $(SRC)/mf_api.c $(CONTRIB_SRC)/mf_publisher.c
 	$(CC) -shared $^ -o $@.so -lrt -ldl -Wl,--export-dynamic $(CFLAGS) $(LFLAGS)
 
-mf_api_test: $(TEST_SRC)/mf_api_test.c $(SRC)/mf_api.c $(SRC)/mf_util.c $(CONTRIB_SRC)/mf_publisher.c
-	$(CC) $^ -o $@ -I. $(CFLAGS) $(LFLAGS)
-
-mf_update: $(TOOLS_SRC)/mf_update.c $(SRC)/mf_api.c $(SRC)/mf_util.c $(CONTRIB_SRC)/mf_publisher.c
-	$(CC) $^ -o $@ -I. $(CFLAGS) $(LFLAGS)
+test_mf_api: $(TEST_SRC)/test_mf_api.c $(SRC)/mf_api.c $(CONTRIB_SRC)/mf_publisher.c
+	$(CC) $^ -o $@ $(CUTEST)/*.c $(CUTEST_INC) $(API_INC) -I. $(CFLAGS) $(LFLAGS)
 
 install:
-	@mkdir -p dist/
 	@mkdir -p lib/
-	@mkdir -p test/
-	mv -f mf_add_user dist/
-	mv -f mf_new_experiment dist/
-	mv -f mf_api_test test/
-	mv -f mf_update dist/
 	mv -f mf_api.so lib/
 
 clean:
 	rm -rf *.o
 	rm -rf *.so
-	rm -rf mf_add_user
-	rm -rf mf_new_experiment
-	rm -rf mf_api_test
-	rm -rf mf_update
-	rm -rf dist
+	rm -rf test_mf_api
 	rm -rf lib
-	rm -rf test
 
 clean-all: clean
 	rm -rf bin

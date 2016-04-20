@@ -14,20 +14,28 @@
  * limitations under the License.
  */
 #include "mf_api.h"
-#include "mf_util.h"
+#include "contrib/mf_debug.h"
 #include "contrib/mf_publisher.h"
 
-#include <ctype.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <ctype.h>    /* tolower */
+#include <stdio.h>    /* snprintf */
+#include <stdlib.h>   /* malloc */
+#include <string.h>   /* memcpy, strlen */
+#include <netdb.h>    /* freeaddrinfo */
+#include <sys/time.h> /* gettimeofday */
+#include <time.h>     /* strftime, localtime */
+#include <unistd.h>   /* gethostname */
+
+/*******************************************************************************
+ * Variable Declarations
+ ******************************************************************************/
 
 typedef struct mf_state_t mf_state;
 
 struct mf_state_t {
     const char* experiment_id;
-    const char* workflow;
-    const char* task;
+    const char* user;
+    const char* application;
     const char* hostname;
     const char* server;
     const char* path;
@@ -36,55 +44,163 @@ struct mf_state_t {
 
 mf_state* status;
 
+/*******************************************************************************
+ * Forward Declarations
+ ******************************************************************************/
+
 static void to_lowercase(char* word, int length);
+static void get_hostname(char* hostname);
+char* mf_api_get_time();
+
+/*******************************************************************************
+ * mf_api_new
+ ******************************************************************************/
+
+const char*
+mf_api_new(
+    const char* server,
+    const char* user,
+    const char* application)
+{
+    if (server[0] == '\0') {
+        log_error("parameter 'server' is not set (%s)", server);
+        return NULL;
+    }
+    if (user[0] == '\0') {
+        log_error("parameter 'user' is not set (%s)", user);
+        return NULL;
+    }
+
+    if (status == NULL) {
+        status = malloc(sizeof(mf_state));
+    }
+    status->server = strdup(server);
+    status->path = strdup("v1/mf/metrics");
+
+    char tmp[strlen(user)];
+    strcpy(tmp, user);
+    to_lowercase(tmp, strlen(tmp));
+    status->user = strdup(tmp);
+
+    if (application == '\0') {
+        status->application = strdup("_all");
+    } else {
+        strcpy(tmp, application);
+        to_lowercase(tmp, strlen(tmp));
+        status->application = strdup(tmp);
+    }
+
+    char* hostname = malloc(sizeof(char) * 254);
+    get_hostname(hostname);
+    status->hostname = strdup(hostname);
+
+    char* response = mf_create_user(status->server, status->user);
+    if (strlen(response) != strlen("AVQzZdmAcIVzfhf1PDIn")) {
+        log_error("Error: %s", response); // error message from Elasticsearch
+        return NULL;
+    }
+    status->experiment_id = strdup(response);
+
+    return status->experiment_id;
+}
+
+/*******************************************************************************
+ * mf_api_set
+ ******************************************************************************/
 
 void
-mf_api_init(
+mf_api_set(
     const char* server,
     const char* experiment_id,
-    const char* workflow,
-    const char* task)
+    const char* user,
+    const char* application)
 {
     if (status == NULL) {
         status = malloc(sizeof(mf_state));
     }
     status->server = strdup(server);
-    status->path = strdup("v1/dreamcloud/mf/metrics");
+    status->path = strdup("v1/mf/metrics");
     status->experiment_id = strdup(experiment_id);
 
-    char tmp[strlen(workflow)];
-    strcpy(tmp, workflow);
+    char tmp[strlen(user)];
+    strcpy(tmp, user);
     to_lowercase(tmp, strlen(tmp));
-    status->workflow = strdup(tmp);
+    status->user = strdup(tmp);
 
-    if (task == '\0') {
-        status->task = strdup("seq");
+    if (application == '\0') {
+        status->application = strdup("_all");
     } else {
-        strcpy(tmp, task);
+        strcpy(tmp, application);
         to_lowercase(tmp, strlen(tmp));
-        status->task = strdup(tmp);
+        status->application = strdup(tmp);
     }
 
     char* hostname = malloc(sizeof(char) * 254);
-    mf_api_get_hostname(hostname);
+    get_hostname(hostname);
     status->hostname = strdup(hostname);
-
-    //status->date = strdup(mf_api_get_date());
-
-    /*
-    char URL[256];
-    sprintf(URL, "%s/%s_%s",
-        status->server,
-        status->workflow,
-        status->task
-        //status->date
-    );
-    */
-
-    //mf_create_metrics_index(URL, "idx");
 
     free(hostname);
 }
+
+/*******************************************************************************
+ * mf_api_get_server
+ ******************************************************************************/
+
+const char*
+mf_api_get_server()
+{
+    if (status != NULL) {
+        return status->server;
+    } else {
+        return NULL;
+    }
+}
+
+/*******************************************************************************
+ * mf_api_get_id
+ ******************************************************************************/
+
+const char*
+mf_api_get_id()
+{
+    if (status != NULL) {
+        return status->experiment_id;
+    } else {
+        return NULL;
+    }
+}
+
+/*******************************************************************************
+ * mf_api_get_user
+ ******************************************************************************/
+
+const char*
+mf_api_get_user()
+{
+    if (status != NULL) {
+        return status->user;
+    } else {
+        return NULL;
+    }
+}
+
+/*******************************************************************************
+ * mf_api_get_application
+ ******************************************************************************/
+
+const char*
+mf_api_get_application()
+{
+    if (status != NULL) {
+        return status->application;
+    } else {
+        return NULL;
+    }
+}
+
+/*******************************************************************************
+ * mf_api_update
+ ******************************************************************************/
 
 char*
 mf_api_update(mf_metric* metric)
@@ -104,7 +220,7 @@ mf_api_update(mf_metric* metric)
         }",
         metric->timestamp,
         status->hostname,
-        status->task,
+        status->application,
         metric->type,
         metric->name,
         metric->value
@@ -114,57 +230,27 @@ mf_api_update(mf_metric* metric)
     sprintf(URL, "%s/%s/%s/%s?task=%s",
         status->server,
         status->path,
-        status->workflow,
+        status->user,
         status->experiment_id,
-        status->task
+        status->application
     );
 
     return publish_json(URL, curl_data);
 }
 
-char*
-mf_api_raw_update(const char* json)
+/*******************************************************************************
+ * mf_api_clear
+ ******************************************************************************/
+
+void
+mf_api_clear()
 {
-    char* curl_data = strdup(json);
-    char URL[256];
-
-    sprintf(URL, "%s/%s/%s/%s?task=%s",
-        status->server,
-        status->path,
-        status->workflow,
-        status->experiment_id,
-        status->task
-    );
-
-    return publish_json(URL, curl_data);
+    memset(&status, 0, sizeof(status));
 }
 
-// Wrapper to be called from Fortran (different interface)
-// Currently the timestamp passed to this function is ignored and
-//  a local timestamp is being generated and used.
-void mf_api_update_(
-    const char* timestamp,
-    const char* type,
-    const char* name,
-    const char* value)
-{
-   mf_metric* metric = malloc(sizeof(mf_metric));
-   // Ignore passed timestamp value and generate local one
-   //metric->timestamp = timestamp;
-   char *tempTimestamp = mf_api_get_time();
-   metric->timestamp = tempTimestamp;
-   metric->type = type;
-   metric->name = name;
-   metric->value = value;
-   mf_api_update(metric);
-   //printf("\nTimestamp: %s\n", tempTimestamp);
-   //printf("\nType: %s\n", type);
-   //printf("\nName: %s\n", name);
-   //printf("\nValue: %s\n", value);
-   free(tempTimestamp);
-   free(metric);
-}
-
+/*******************************************************************************
+ * to_lowercase
+ ******************************************************************************/
 
 static void
 to_lowercase(char* word, int length)
@@ -173,4 +259,92 @@ to_lowercase(char* word, int length)
     for(i = 0; i < length; i++) {
         word[i] = tolower(word[i]);
     }
+}
+
+/*******************************************************************************
+ * get_fully_qualified_domain_name
+ ******************************************************************************/
+
+static int
+get_fully_qualified_domain_name(char *fqdn)
+{
+    struct addrinfo hints, *info, *p;
+
+    int gai_result;
+
+    char *hostname = malloc(sizeof(char) * 80);
+    gethostname(hostname, sizeof hostname);
+
+    memset(&hints, 0, sizeof hints);
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags = AI_CANONNAME;
+
+    if ((gai_result = getaddrinfo(hostname, "http", &hints, &info)) != 1) {
+        FILE *tmp = NULL;
+        if ((tmp = popen("hostname", "r")) == NULL ) {
+            perror("popen");
+            return -1;
+        }
+        char line[200];
+        while (fgets(line, 200, tmp) != NULL )
+            sprintf(fqdn, "%s", line);
+        return 1;
+    }
+    for (p = info; p != NULL ; p = p->ai_next) {
+        sprintf(fqdn, "%s\n", p->ai_canonname);
+    }
+
+    if (info->ai_canonname)
+        freeaddrinfo(info);
+
+    return 1;
+}
+
+/*******************************************************************************
+ * get_hostname
+ ******************************************************************************/
+
+void
+get_hostname(char* hostname)
+{
+    get_fully_qualified_domain_name(hostname);
+    hostname[strlen(hostname) - 1] = '\0';
+}
+
+/*******************************************************************************
+ * get_time_as_string
+ ******************************************************************************/
+
+static void
+get_time_as_string(char* timestamp, const char* format, int in_milliseconds)
+{
+    char fmt[64];
+    char buf[64];
+    struct timeval tv;
+    struct tm *tm;
+    int cut_of = 0;
+    if (in_milliseconds) {
+        cut_of = 3;
+    }
+
+    gettimeofday(&tv, NULL);
+    if((tm = localtime(&tv.tv_sec)) != NULL) {
+        strftime(fmt, sizeof(fmt), format, tm);
+        snprintf(buf, sizeof(buf), fmt, tv.tv_usec);
+    }
+    memcpy(timestamp, buf, strlen(buf) - cut_of);
+    timestamp[strlen(buf) - cut_of] = '\0';
+}
+
+/*******************************************************************************
+ * mf_api_get_time
+ ******************************************************************************/
+
+char*
+mf_api_get_time()
+{
+    char* timestamp = malloc(sizeof(char) * 64);
+    get_time_as_string(timestamp, "%Y-%m-%dT%H:%M:%S.%%6u", 1);
+    return timestamp;
 }
