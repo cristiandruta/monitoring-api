@@ -18,8 +18,8 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "../mf_workflow_api.h"  /* mf_api_init(), mf_api_update() */
-#include "../mf_workflow_util.h" /* mf_get_time(), mf_api_get_hostname() */
+#include "../mf_api.h"  /* mf_api_init(), mf_api_update() */
+#include "../mf_util.h" /* mf_get_time(), mf_api_get_hostname() */
 
 const char* experiment_id;
 const char* server;
