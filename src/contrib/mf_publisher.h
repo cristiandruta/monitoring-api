@@ -112,7 +112,9 @@ char* mf_register_workflow(
 
 char* mf_create_user(
   const char* server,
-  const char* username
+  const char* username,
+  const char* experiment_id,
+  const char* message
 );
 
 /**

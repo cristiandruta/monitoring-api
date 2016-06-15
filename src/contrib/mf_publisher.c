@@ -29,20 +29,20 @@ struct curl_slist *headers = NULL;
 static void
 init_curl()
 {
-	if (curl != NULL ) {
-		return;
-	}
+    if (curl != NULL ) {
+        return;
+    }
 
     curl_global_init(CURL_GLOBAL_ALL);
-	curl = curl_easy_init();
+    curl = curl_easy_init();
 
     if (headers != NULL ) {
-		return;
-	}
+        return;
+    }
 
-	headers = curl_slist_append(headers, "Accept: application/json");
-	headers = curl_slist_append(headers, "Content-Type: application/json");
-	headers = curl_slist_append(headers, "charsets: utf-8");
+    headers = curl_slist_append(headers, "Accept: application/json");
+    headers = curl_slist_append(headers, "Content-Type: application/json");
+    headers = curl_slist_append(headers, "charsets: utf-8");
 }
 
 struct string {
@@ -63,10 +63,10 @@ init_string(struct string *s) {
 
 static size_t
 get_stream_data(void *buffer, size_t size, size_t nmemb, void *stream) {
-	size_t total = size * nmemb;
-	memcpy(stream, buffer, total);
+    size_t total = size * nmemb;
+    memcpy(stream, buffer, total);
 
-	return total;
+    return total;
 }
 
 static int
@@ -74,21 +74,21 @@ check_URL(const char *URL)
 {
     if (URL == NULL || *URL == '\0') {
         const char *error_msg = "URL not set.";
-		log_error("publish(const char*, Message) %s", error_msg);
-		return 0;
-	}
-	return 1;
+        log_error("publish(const char*, Message) %s", error_msg);
+        return 0;
+    }
+    return 1;
 }
 
 static int
 check_message(const char *message)
 {
-	if (message == NULL || *message == '\0') {
-	    const char *error_msg = "message not set.";
-		log_error("publish(const char*, Message) %s", error_msg);
-		return 0;
-	}
-	return 1;
+    if (message == NULL || *message == '\0') {
+        const char *error_msg = "message not set.";
+        log_error("publish(const char*, Message) %s", error_msg);
+        return 0;
+    }
+    return 1;
 }
 
 static int
@@ -96,12 +96,12 @@ prepare_publish(const char *URL, const char *message)
 {
     init_curl();
 
-	curl_easy_setopt(curl, CURLOPT_URL, URL);
-	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    curl_easy_setopt(curl, CURLOPT_URL, URL);
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
-	curl_easy_setopt(curl, CURLOPT_POSTFIELDS, message);
-	curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, (long ) strlen(message));
-	#ifdef DEBUG
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, message);
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, (long ) strlen(message));
+    #ifdef DEBUG
     curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
     #endif
 
@@ -142,8 +142,6 @@ query(const char* query, char* received_data)
         return 0;
     }
 
-    puts(query);
-
     init_string(&response_message);
 
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write);
@@ -176,16 +174,19 @@ publish_json(const char *URL, const char *message)
     }
 
     char* response_message = malloc(sizeof(char) * 1024);
+    memset(response_message, 0x00, 1024);
+
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, get_stream_data);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, response_message);
 
-	CURLcode response = curl_easy_perform(curl);
+    CURLcode response = curl_easy_perform(curl);
     if (response != CURLE_OK) {
-		const char *error_msg = curl_easy_strerror(response);
-		log_error("publish(const char*, Message) %s", error_msg);
-	}
+        const char *error_msg = curl_easy_strerror(response);
+        log_error("publish(const char*, Message) %s", error_msg);
+    }
 
-	curl_easy_reset(curl);
+    debug("URL %s + RESPONSE: %s", URL, response_message);
+    curl_easy_reset(curl);
 
     return response_message;
 }
@@ -194,8 +195,8 @@ char*
 get_execution_id(const char *URL, char *message)
 {
     if (strlen(execution_id) > 0) {
-		return execution_id;
-	}
+        return execution_id;
+    }
 
     if (!check_URL(URL) || !check_message(message)) {
         return '\0';
@@ -205,28 +206,28 @@ get_execution_id(const char *URL, char *message)
         return '\0';
     }
 
-	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, get_stream_data);
-	curl_easy_setopt(curl, CURLOPT_WRITEDATA, &execution_id);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, get_stream_data);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &execution_id);
 
-	CURLcode response = curl_easy_perform(curl);
+    CURLcode response = curl_easy_perform(curl);
     if (response != CURLE_OK) {
-		const char *error_msg = curl_easy_strerror(response);
-		log_error("publish(const char*, Message) %s", error_msg);
-	}
+        const char *error_msg = curl_easy_strerror(response);
+        log_error("publish(const char*, Message) %s", error_msg);
+    }
 
     debug("get_execution_id(const char*, char*) Execution_ID = <%s>", execution_id);
 
-	curl_easy_reset(curl);
+    curl_easy_reset(curl);
 
-	return execution_id;
+    return execution_id;
 }
 
 void
 shutdown_curl()
 {
     if (curl == NULL ) {
-		return;
-	}
+        return;
+    }
 
     curl_easy_cleanup(curl);
     curl_global_cleanup();
@@ -262,6 +263,7 @@ mf_register_workflow(
 {
     init_curl();
     char* response_message = malloc(sizeof(char) * 1024);
+    memset(response_message, 0x00, 1024);
 
     const char* index = "v1/mf/users";
     char* newURL = malloc(sizeof(char) * (strlen(URL) + strlen(index) + strlen(workflow) + 4));
@@ -289,17 +291,44 @@ mf_register_workflow(
 
 char* mf_create_user(
   const char* server,
-  const char* username)
+  const char* username,
+  const char* experiment_id,
+  const char* message)
 {
     init_curl();
 
     const char* resource = "v1/mf/users";
-    char* URL = malloc(sizeof(char) * (strlen(server) + strlen(resource) + strlen(username) + 10));
-    sprintf(URL, "%s/%s/%s/create", server, resource, username);
+    char* URL;
 
-    debug("mf_create_user(URL): %s", URL);
+    if (experiment_id == NULL || experiment_id == '\0') {
+        URL = malloc(
+            sizeof(char) *
+            (strlen(server) +
+            strlen(resource) +
+            strlen(username) +
+            10)
+        );
+        sprintf(URL, "%s/%s/%s/create", server, resource, username);
+    } else {
+        URL = malloc(
+            sizeof(char) *
+            (strlen(server) +
+             strlen(resource) +
+             strlen(username) +
+             strlen(experiment_id) +
+            12)
+        );
+        sprintf(URL, "%s/%s/%s/%s/create", server, resource, username, experiment_id);
+    }
+
     char* json = malloc(sizeof(char) * 128 + strlen(username));
-    sprintf(json, "{ \"user\": \"%s\" }", username);
+
+    /* include message as body */
+    if (message == NULL || message[0] == '\0') {
+        sprintf(json, "{ \"user\": \"%s\" }", username);
+    } else {
+        json = strdup(message);
+    }
 
     return publish_json(URL, json);
 }
@@ -314,7 +343,8 @@ mf_create_experiment(
     const char* index = "v1/dreamcloud/mf/experiments";
 
     sprintf(resource, "%s/%s", index, workflow);
-    char* URL = malloc(sizeof(char) * (strlen(server) + strlen(index) + strlen(workflow) + 4));
+    char* URL = malloc(sizeof(char) *
+            (strlen(server) + strlen(index) + strlen(workflow) + 4));
     sprintf(URL, "%s/%s", server, resource);
 
     debug("CREATE(URL): %s", URL);

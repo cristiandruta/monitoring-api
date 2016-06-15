@@ -15,6 +15,8 @@
  */
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
+#include <unistd.h>
 
 #include "CuTest.h"
 #include "mf_api.h"
@@ -25,35 +27,54 @@ Test_initialize(CuTest *tc)
     const char* server = "http://localhost:3030";
     const char* username = "test_user";
     const char* application = "myApp";
+    const char* experiment_id = "uniqueId123";
+    const char* job_id = "custom_id";
 
-    const char* experiment_id = mf_api_new(server, username, application);
-    CuAssertTrue(tc, strlen(experiment_id) == strlen("AVQzilzjcIVzfhf1PDL3"));
+    const char* new_experiment_id = mf_api_new(
+        server, username, application, experiment_id, job_id
+    );
+    CuAssertTrue(tc, strcmp(experiment_id, new_experiment_id) == 0);
 }
 
 void
-Test_configure(CuTest *tc)
+Test_initialize_without_experiment_id(CuTest *tc)
 {
     const char* server = "http://localhost:3030";
-    const char* experiment_id = "myID_1235";
-    const char* username = "test_USER";
-    const char* application = "myApp";
-
-    mf_api_set(server, experiment_id, username, application);
-    CuAssertStrEquals(tc, "http://localhost:3030", mf_api_get_server());
-    CuAssertStrEquals(tc, "myID_1235", mf_api_get_id());
-    CuAssertStrEquals(tc, "test_user", mf_api_get_user()); /* lowercase! */
-    CuAssertStrEquals(tc, "myapp", mf_api_get_application()); /* lowercase! */
-}
-
-void
-Test_update(CuTest *tc)
-{
-    const char* server = "http://localhost:3030";
-    const char* experiment_id = "myID_1235";
     const char* username = "test_user";
     const char* application = "myApp";
+    const char* experiment_id = NULL;
+    const char* job_id = "custom_id_2";
 
-    mf_api_set(server, experiment_id, username, application);
+    const char* new_experiment_id = mf_api_new(
+        server, username, application, experiment_id, job_id
+    );
+    CuAssertTrue(tc, strlen(new_experiment_id) == strlen("AVQzilzjcIVzfhf1PDL3"));
+}
+
+void
+Test_initialize_without_job_id(CuTest *tc)
+{
+    const char* server = "http://localhost:3030";
+    const char* username = "test_user";
+    const char* application = "myApp";
+    const char* experiment_id = NULL;
+    const char* job_id = NULL;
+
+    const char* new_experiment_id = mf_api_new(
+        server, username, application, experiment_id, job_id
+    );
+    CuAssertTrue(tc, strlen(new_experiment_id) == strlen("AVQzilzjcIVzfhf1PDL3"));
+}
+
+void
+Test_register_and_update(CuTest *tc)
+{
+    const char* server = "http://localhost:3030";
+    const char* experiment_id = NULL;
+    const char* username = "test_user";
+    const char* application = "myApp";
+    const char* job_id = "another custom id";
+    mf_api_new(server, username, application, experiment_id, job_id);
 
     /* define metric */
     mf_metric* metric = malloc(sizeof(mf_metric));
@@ -66,18 +87,53 @@ Test_update(CuTest *tc)
     CuAssertTrue(tc, strstr(response, "error") == NULL);
 }
 
+void
+Test_register_and_update_multiple_times(CuTest *tc)
+{
+    const char* server = "http://localhost:3030";
+    const char* experiment_id = NULL;
+    const char* username = "test_user";
+    const char* application = "myApp";
+    const char* job_id = "yet another custom id";
+    mf_api_new(server, username, application, experiment_id, job_id);
+    char* response = malloc(sizeof(char) * 512);
+
+    /* define metric */
+    mf_metric* metric = malloc(sizeof(mf_metric));
+    metric->type = "foobar";
+    metric->name = "progress (%)";
+    int value;
+    for (value = 0; value != 50; ++value) {
+        char tmp[3];
+        sprintf(tmp, "%d", value * 2);
+        metric->value = strdup(tmp);
+        metric->timestamp = mf_api_get_time();
+
+        memset(response, 0x00, 512);
+        response = mf_api_update(metric);
+
+        if (strstr(response, "error") != NULL) {
+            return;
+        }
+
+        sleep(1);
+    }
+
+    CuAssertTrue(tc, strstr(response, "error") == NULL);
+}
+
 CuSuite* CuGetSuite(void)
 {
     CuSuite* suite = CuSuiteNew();
 
     // mf_api_new
     SUITE_ADD_TEST(suite, Test_initialize);
-
-    // mf_api_set
-    SUITE_ADD_TEST(suite, Test_configure);
+    SUITE_ADD_TEST(suite, Test_initialize_without_experiment_id);
+    SUITE_ADD_TEST(suite, Test_initialize_without_job_id);
 
     // mf_api_update
-    SUITE_ADD_TEST(suite, Test_update);
+    SUITE_ADD_TEST(suite, Test_register_and_update);
+    SUITE_ADD_TEST(suite, Test_register_and_update_multiple_times);
 
     return suite;
 }

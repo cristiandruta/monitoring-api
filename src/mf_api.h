@@ -34,38 +34,16 @@ struct mf_metric_t {
  * @param server the URL of the monitoring server, e.g. localhost:3030
  * @param user the user who has started the experiment
  * @param application an application name
+ * @param job_id a job_id associated with the experiment (equals mf_api if not set)
  *
  * @return the response from the server in JSON format with the experiment ID.
  */
 const char* mf_api_new(
     const char* server,
     const char* user,
-    const char* application
-);
-
-/** @brief Configures the API to connect to the current monitoring server.
- *
- * This method takes default parameters as arguments in order to configure
- * the monitoring API in order to talk to the monitoring server. Please note
- * that if you don't have an experiment ID, you can either choose one manually
- * (not advised), or use the function `mf_api_new` instead. `mf_api_new` will
- * register the username, and will generate a new experiment ID automatically.
- *
- * Please note that this method does not interact with the monitoring server.
- * Thus, it is possible that follow up calls to `mf_api_update` might fail
- * due some misconfiguration. If in doubt, please call `mf_api_new` instead of
- * `mf_api_set`.
- *
- * @param server the URL of the monitoring server, e.g. localhost:3030
- * @param experiment_id the current experiment ID to associated metrics with
- * @param user the user who has started the experiment
- * @param application an application name
- */
-void mf_api_set(
-    const char* server,
+    const char* application,
     const char* experiment_id,
-    const char* user,
-    const char* application
+    const char* job_id
 );
 
 /** @brief Sends new metric data to the monitoring server.
@@ -116,6 +94,12 @@ const char* mf_api_get_user();
  * @return current application name
  */
 const char* mf_api_get_application();
+
+/** @brief Returns the current job id
+ *
+ * @return current job id
+ */
+const char* mf_api_get_job_id();
 
 /** @brief Returns the current experiment ID
  *

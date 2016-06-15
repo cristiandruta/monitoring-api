@@ -25,6 +25,7 @@
 #include <sys/time.h> /* gettimeofday */
 #include <time.h>     /* strftime, localtime */
 #include <unistd.h>   /* gethostname */
+#include <math.h>     /* floor */
 
 /*******************************************************************************
  * Variable Declarations
@@ -38,6 +39,7 @@ struct mf_state_t {
     const char* application;
     const char* hostname;
     const char* server;
+    const char* job_id;
     const char* path;
     const char* date;
 } mf_state_t;
@@ -51,6 +53,7 @@ mf_state* status;
 static void to_lowercase(char* word, int length);
 static void get_hostname(char* hostname);
 char* mf_api_get_time();
+void convert_time_to_char(double ts, char* time_stamp);
 
 /*******************************************************************************
  * mf_api_new
@@ -60,13 +63,15 @@ const char*
 mf_api_new(
     const char* server,
     const char* user,
-    const char* application)
+    const char* application,
+    const char* experiment_id,
+    const char* job_id)
 {
-    if (server[0] == '\0') {
+    if (server == NULL || server[0] == '\0') {
         log_error("parameter 'server' is not set (%s)", server);
         return NULL;
     }
-    if (user[0] == '\0') {
+    if (user == NULL || user[0] == '\0') {
         log_error("parameter 'user' is not set (%s)", user);
         return NULL;
     }
@@ -82,7 +87,8 @@ mf_api_new(
     to_lowercase(tmp, strlen(tmp));
     status->user = strdup(tmp);
 
-    if (application == '\0') {
+    /* handle input parameter 'application' */
+    if (application == NULL || application[0] == '\0') {
         status->application = strdup("_all");
     } else {
         strcpy(tmp, application);
@@ -90,56 +96,52 @@ mf_api_new(
         status->application = strdup(tmp);
     }
 
+    /* handle input parameter 'experiment_id' */
+    if (experiment_id == NULL || experiment_id[0] == '\0') {
+        status->experiment_id = NULL;
+    } else {
+        status->experiment_id = strdup(experiment_id);
+    }
+
+    /* handle input parameter 'job_id') */
+    if (job_id == NULL || job_id[0] == '\0') {
+        status->job_id = strdup("mf_api");
+    } else {
+        status->job_id = strdup(job_id);
+    }
+
     char* hostname = malloc(sizeof(char) * 254);
     get_hostname(hostname);
     status->hostname = strdup(hostname);
 
-    char* response = mf_create_user(status->server, status->user);
-    if (strlen(response) != strlen("AVQzZdmAcIVzfhf1PDIn")) {
-        log_error("Error: %s", response); // error message from Elasticsearch
-        return NULL;
-    }
+    /*
+     * either create a new experiment_id if uninitialized,
+     * otherwise mf_create_user just returns the given id
+     */
+    char message[1000] = "";
+    sprintf(message,
+        "{ \
+          \"host\":\"%s\", \
+          \"@timestamp\":\"%s\", \
+          \"user\":\"%s\", \
+          \"application\":\"%s\", \
+          \"job_id\":\"%s\" \
+        }",
+        status->hostname,
+        mf_api_get_time(),
+        status->user,
+        status->application,
+        status->job_id
+    );
+
+    const char* response = mf_create_user(
+        status->server, status->user, status->experiment_id, message
+    );
+
+    /* we just expect that the reponse is correct */
     status->experiment_id = strdup(response);
 
-    return status->experiment_id;
-}
-
-/*******************************************************************************
- * mf_api_set
- ******************************************************************************/
-
-void
-mf_api_set(
-    const char* server,
-    const char* experiment_id,
-    const char* user,
-    const char* application)
-{
-    if (status == NULL) {
-        status = malloc(sizeof(mf_state));
-    }
-    status->server = strdup(server);
-    status->path = strdup("v1/mf/metrics");
-    status->experiment_id = strdup(experiment_id);
-
-    char tmp[strlen(user)];
-    strcpy(tmp, user);
-    to_lowercase(tmp, strlen(tmp));
-    status->user = strdup(tmp);
-
-    if (application == '\0') {
-        status->application = strdup("_all");
-    } else {
-        strcpy(tmp, application);
-        to_lowercase(tmp, strlen(tmp));
-        status->application = strdup(tmp);
-    }
-
-    char* hostname = malloc(sizeof(char) * 254);
-    get_hostname(hostname);
-    status->hostname = strdup(hostname);
-
-    free(hostname);
+    return response;
 }
 
 /*******************************************************************************
@@ -149,11 +151,7 @@ mf_api_set(
 const char*
 mf_api_get_server()
 {
-    if (status != NULL) {
-        return status->server;
-    } else {
-        return NULL;
-    }
+    return (status != NULL) ? status->server : NULL;
 }
 
 /*******************************************************************************
@@ -163,11 +161,7 @@ mf_api_get_server()
 const char*
 mf_api_get_id()
 {
-    if (status != NULL) {
-        return status->experiment_id;
-    } else {
-        return NULL;
-    }
+    return (status != NULL) ? status->experiment_id : NULL;
 }
 
 /*******************************************************************************
@@ -177,11 +171,7 @@ mf_api_get_id()
 const char*
 mf_api_get_user()
 {
-    if (status != NULL) {
-        return status->user;
-    } else {
-        return NULL;
-    }
+    return (status != NULL) ? status->user : NULL;
 }
 
 /*******************************************************************************
@@ -191,11 +181,17 @@ mf_api_get_user()
 const char*
 mf_api_get_application()
 {
-    if (status != NULL) {
-        return status->application;
-    } else {
-        return NULL;
-    }
+    return (status != NULL) ? status->application : NULL;
+}
+
+/*******************************************************************************
+ * mf_api_get_job_id
+ ******************************************************************************/
+
+const char*
+mf_api_get_job_id()
+{
+    return (status != NULL) ? status->job_id : NULL;
 }
 
 /*******************************************************************************
@@ -322,6 +318,7 @@ get_time_as_string(char* timestamp, const char* format, int in_milliseconds)
     char fmt[64];
     char buf[64];
     struct timeval tv;
+    time_t current_time;
     struct tm *tm;
     int cut_of = 0;
     if (in_milliseconds) {
@@ -329,12 +326,25 @@ get_time_as_string(char* timestamp, const char* format, int in_milliseconds)
     }
 
     gettimeofday(&tv, NULL);
-    if((tm = localtime(&tv.tv_sec)) != NULL) {
-        strftime(fmt, sizeof(fmt), format, tm);
-        snprintf(buf, sizeof(buf), fmt, tv.tv_usec);
+    current_time = tv.tv_sec;
+
+    /* get timestamp */
+    if((tm = localtime(&current_time)) != NULL) {
+        // yyyy-MM-dd’T'HH:mm:ss.SSS
+        strftime(fmt, sizeof fmt, "%Y-%m-%dT%H:%M:%S.%%6u", tm);
+        snprintf(buf, sizeof buf, fmt, tv.tv_usec);
     }
+
     memcpy(timestamp, buf, strlen(buf) - cut_of);
     timestamp[strlen(buf) - cut_of] = '\0';
+
+    /* replace whitespaces in timestamp: yyyy-MM-dd’T'HH:mm:ss. SS */
+    int i = 0;
+    while (timestamp[i++]) {
+        if (isspace(timestamp[i])) {
+            timestamp[i] = '0';
+        }
+    }
 }
 
 /*******************************************************************************
@@ -346,5 +356,7 @@ mf_api_get_time()
 {
     char* timestamp = malloc(sizeof(char) * 64);
     get_time_as_string(timestamp, "%Y-%m-%dT%H:%M:%S.%%6u", 1);
+    debug("TIMESTAMP: %s", timestamp);
     return timestamp;
 }
+
