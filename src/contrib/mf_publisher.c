@@ -53,7 +53,7 @@ struct string {
 void
 init_string(struct string *s) {
     s->len = 0;
-    s->ptr = malloc(s->len+1);
+    s->ptr = (char *)malloc(s->len+1);
     if (s->ptr == NULL) {
         fprintf(stderr, "malloc() failed\n");
         exit(EXIT_FAILURE);
@@ -173,7 +173,7 @@ publish_json(const char *URL, const char *message)
         return 0;
     }
 
-    char* response_message = malloc(sizeof(char) * 1024);
+    char* response_message = (char *)malloc(sizeof(char) * 1024);
     memset(response_message, 0x00, 1024);
 
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, get_stream_data);
@@ -262,11 +262,11 @@ mf_register_workflow(
     const char* json_string)
 {
     init_curl();
-    char* response_message = malloc(sizeof(char) * 1024);
+    char* response_message = (char *)malloc(sizeof(char) * 1024);
     memset(response_message, 0x00, 1024);
 
     const char* index = "v1/mf/users";
-    char* newURL = malloc(sizeof(char) * (strlen(URL) + strlen(index) + strlen(workflow) + 4));
+    char* newURL = (char *)malloc(sizeof(char) * (strlen(URL) + strlen(index) + strlen(workflow) + 4));
     sprintf(newURL, "%s/%s/%s", URL, index, workflow);
 
     curl_easy_setopt(curl, CURLOPT_URL, newURL);
@@ -301,7 +301,7 @@ char* mf_create_user(
     char* URL;
 
     if (experiment_id == NULL || experiment_id == '\0') {
-        URL = malloc(
+        URL = (char *)malloc(
             sizeof(char) *
             (strlen(server) +
             strlen(resource) +
@@ -310,7 +310,7 @@ char* mf_create_user(
         );
         sprintf(URL, "%s/%s/%s/create", server, resource, username);
     } else {
-        URL = malloc(
+        URL = (char *)malloc(
             sizeof(char) *
             (strlen(server) +
              strlen(resource) +
@@ -321,7 +321,7 @@ char* mf_create_user(
         sprintf(URL, "%s/%s/%s/%s/create", server, resource, username, experiment_id);
     }
 
-    char* json = malloc(sizeof(char) * 128 + strlen(username));
+    char* json = (char *)malloc(sizeof(char) * 128 + strlen(username));
 
     /* include message as body */
     if (message == NULL || message[0] == '\0') {
@@ -339,11 +339,11 @@ mf_create_experiment(
     const char* workflow,
     const char* json_string)
 {
-    char* resource = malloc(sizeof(char) * 128);
+    char* resource = (char *)malloc(sizeof(char) * 128);
     const char* index = "v1/dreamcloud/mf/experiments";
 
     sprintf(resource, "%s/%s", index, workflow);
-    char* URL = malloc(sizeof(char) *
+    char* URL = (char *)malloc(sizeof(char) *
             (strlen(server) + strlen(index) + strlen(workflow) + 4));
     sprintf(URL, "%s/%s", server, resource);
 

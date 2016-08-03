@@ -31,6 +31,8 @@
  * Variable Declarations
  ******************************************************************************/
 
+
+
 typedef struct mf_state_t mf_state;
 
 struct mf_state_t {
@@ -77,7 +79,7 @@ mf_api_new(
     }
 
     if (status == NULL) {
-        status = malloc(sizeof(mf_state));
+        status = (mf_state*) malloc(sizeof(mf_state));
     }
     status->server = strdup(server);
     status->path = strdup("v1/mf/metrics");
@@ -110,7 +112,7 @@ mf_api_new(
         status->job_id = strdup(job_id);
     }
 
-    char* hostname = malloc(sizeof(char) * 254);
+    char* hostname = (char *)malloc(sizeof(char) * 254);
     get_hostname(hostname);
     status->hostname = strdup(hostname);
 
@@ -268,7 +270,7 @@ get_fully_qualified_domain_name(char *fqdn)
 
     int gai_result;
 
-    char *hostname = malloc(sizeof(char) * 80);
+    char *hostname = (char *)malloc(sizeof(char) * 80);
     gethostname(hostname, sizeof hostname);
 
     memset(&hints, 0, sizeof hints);
@@ -354,7 +356,7 @@ get_time_as_string(char* timestamp, const char* format, int in_milliseconds)
 char*
 mf_api_get_time()
 {
-    char* timestamp = malloc(sizeof(char) * 64);
+    char* timestamp = (char *)malloc(sizeof(char) * 64);
     get_time_as_string(timestamp, "%Y-%m-%dT%H:%M:%S.%%6u", 1);
     debug("TIMESTAMP: %s", timestamp);
     return timestamp;

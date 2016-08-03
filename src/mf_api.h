@@ -16,6 +16,8 @@
 #ifndef MF_API_H_
 #define MF_API_H_
 
+
+
 typedef struct mf_metric_t mf_metric;
 
 struct mf_metric_t {
@@ -23,7 +25,7 @@ struct mf_metric_t {
     const char* type;      /* type of the metric, e.g. PAPI-C, energy or progress */
     const char* name;      /* name of the metric */
     const char* value;     /* value of the metric in question */
-} mf_metric_t;
+};// mf_metric_t;
 
 /** @brief Registers a new user and experiment.
  *
@@ -122,5 +124,7 @@ void mf_api_clear();
  * @return current timestamp as a string
  */
 char* mf_api_get_time();
+
+
 
 #endif
