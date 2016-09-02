@@ -8,7 +8,7 @@
 This module includes a minimal API written in C to register with the
 monitoring server, and then send metric data for a given user, application, and
 experiment ID. A full documentation of the RESTful API of the monitoring
-server can be found in the respective Github repository.
+server can be found in the [Web page][api].
 
 
 ## Prerequisites
@@ -100,3 +100,4 @@ Copyright (C) 2016 University of Stuttgart
 [server]: https://github.com/excess-project/monitoring-server
 [excess]: http://www.excess-project.eu
 [dreamcloud]: http://www.dreamcloud-project.eu
+[api]: http://excess-project.github.io/monitoring-server
